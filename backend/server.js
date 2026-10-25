@@ -15,8 +15,13 @@ const PORT = parseInt(process.env.PORT, 10) || 3001;
 // ─── Middleware ──────────────────────────────────────────────────────────────
 
 // CORS: Allow the frontend dev server (Live Server, etc.)
+// FRONTEND_URL can hold one or more additional origins, comma-separated
+// (e.g. your production Vercel URL).
 const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:5500',
+  ...(process.env.FRONTEND_URL || 'http://localhost:5500')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean),
   'http://127.0.0.1:5500',
   'http://localhost:5500',
   'http://127.0.0.1:3000',
@@ -25,10 +30,17 @@ const allowedOrigins = [
   'null'
 ];
 
+// Deployed frontends are hosted on *.vercel.app (covers the production
+// domain and every preview deployment subdomain).
+const allowedOriginPatterns = [ /^https?:\/\/[a-z0-9-]+\.vercel\.app$/i ];
+
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (Postman, server-to-server) or matching allowed origins
-    if (!origin || allowedOrigins.includes(origin)) {
+    const ok = !origin 
+      || allowedOrigins.includes(origin) 
+      || allowedOriginPatterns.some(p => p.test(origin));
+    if (ok) {
       callback(null, true);
     } else {
       console.warn(`CORS blocked origin: ${origin}`);

@@ -4,7 +4,11 @@
 (function () {
   'use strict';
 
-  const BASE_URL = 'http://localhost:3001/api';
+  // Local dev → local backend. Anything else (e.g. Vercel) → deployed backend on Render.
+  const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  const BASE_URL = isLocal
+    ? 'http://localhost:3001/api'
+    : 'https://sizzel-bite.onrender.com/api';
 
   // ─── Generic fetch wrapper ────────────────────────────────────────────────
 
