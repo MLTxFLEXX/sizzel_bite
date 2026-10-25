@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SizzleBite — Fast Food Dine-In Table Ordering</title>
+  <meta name="description" content="Order fresh smash burgers, crispy chicken, loaded fries, and craft shakes directly from your restaurant table. Zero waiting, fast live kitchen tracking." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- Top App Navigation Bar -->
+  <header class="app-header">
+    <div class="header-container">
+      <!-- Brand Logo -->
+      <div class="brand-section" onclick="window.location.search = '?table=' + (window.sizzleApp ? window.sizzleApp.activeTable || 4 : 4)">
+        <div class="brand-logo-badge">🔥</div>
+        <div>
+          <div class="brand-title">SIZZLE<span>BITE</span></div>
+          <div class="brand-tagline">Gourmet Fast Food & Dine-In</div>
+        </div>
+      </div>
+
+      <!-- Current Table Indicator Pill -->
+      <div class="table-pill-control" onclick="window.sizzleApp.openTablePicker()" title="Click to switch your Table Number">
+        <div class="table-live-dot"></div>
+        <div class="table-pill-label">Table <span class="active-table-num">4</span></div>
+        <span class="table-pill-action">Change</span>
+      </div>
+
+      <!-- Right Action Controls -->
+      <div class="header-actions">
+        <button id="btnToggleSound" class="btn-icon-soft" title="Toggle Sound Alerts">
+          <span id="soundIcon">🔊</span>
+        </button>
+
+        <button class="btn-icon-soft" onclick="window.sizzleApp.openQRModal()" title="View Table QR Codes">
+          <span>📱 Table QRs</span>
+        </button>
+
+        <button id="btnToggleMode" class="btn-mode-toggle" title="Switch between Customer View and Kitchen KDS Display">
+          <span>👨‍🍳 Kitchen KDS</span>
+        </button>
+
+        <button id="btnOpenCart" class="btn-cart-header" title="Open Your Table Order Cart">
+          <span>🛒</span>
+          <span class="cart-count-badge cart-item-count-badge">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Quick Waiter & Service Request Bar -->
+  <aside class="service-quick-bar">
+    <div class="service-quick-content">
+      <div class="service-label">
+        <span>🛎️ Table <span class="active-table-num">4</span> Service:</span>
+      </div>
+      <div class="service-buttons-group">
+        <button class="service-chip" data-service="water">💧 Request Fresh Water</button>
+        <button class="service-chip" data-service="napkins">🧻 Extra Napkins / Cutlery</button>
+        <button class="service-chip" data-service="sauces">🥫 Extra Sizzle Sauces</button>
+        <button class="service-chip" data-service="waiter">👨‍💼 Call Waiter to Table</button>
+        <button class="service-chip" data-service="bill">🧾 Request Bill</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Sticky Live Order Tracker Banner (Shows if Table has active order) -->
+  <div id="activeOrderBanner" style="display:none; background: linear-gradient(90deg, #ff5722 0%, #ff8f00 100%); color:#fff; padding:0.65rem 1.25rem; cursor:pointer; align-items:center; justify-content:center; gap:0.75rem; font-size:0.85rem; font-weight:700; box-shadow:0 4px 12px rgba(255,87,34,0.3);">
+    <span>⚡ <span id="bannerOrderStatus">Order in progress</span> for Table <span class="active-table-num">4</span> (<span id="bannerOrderId">ORD-9421</span>)</span>
+    <span style="background:rgba(0,0,0,0.25); padding:0.2rem 0.6rem; border-radius:999px; font-size:0.75rem;">View Live Kitchen Tracker ➔</span>
+  </div>
+
+  <!-- MAIN CUSTOMER VIEW -->
+  <main id="customerView">
+    <!-- Hero Dine-In Welcome Section -->
+    <section class="hero-dinein">
+      <div class="hero-container">
+        <div class="hero-intro">
+          <div class="hero-tag">⚡ DINE-IN TABLE ORDERING SYSTEM</div>
+          <h1 class="hero-heading">Fresh Off The Grill.<br><span class="flame-text">Sizzling Right To Your Table.</span></h1>
+          <p class="hero-subtext">
+            Skip the counter queue! Order your favorite double smash burgers, crispy chicken, and craft shakes straight from your table. Customize toppings, add special kitchen notes, and watch your order get cooked in real-time.
+          </p>
+        </div>
+
+        <div class="hero-table-card">
+          <div class="table-big-badge">
+            <span class="tbl-lbl">Table</span>
+            <span class="tbl-num active-table-num">4</span>
+          </div>
+          <div class="table-info-meta">
+            <h4>You're Ordering At Table <span class="active-table-num">4</span></h4>
+            <p>Our server will bring everything right to your seat.</p>
+            <div class="table-action-btns">
+              <button class="btn-pill-xs" onclick="window.sizzleApp.openTablePicker()">Switch Table</button>
+              <button class="btn-pill-xs" onclick="window.sizzleApp.openQRModal()">Simulate QR Scan</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Category Tabs & Search Sticky Header -->
+    <nav class="sticky-filter-bar">
+      <div class="filter-bar-inner">
+        <!-- Category Scroller -->
+        <div class="category-scroller" id="categoryScroller">
+          <!-- Rendered dynamically by app.js -->
+        </div>
+
+        <!-- Search & Dietary Filters -->
+        <div class="filter-search-group">
+          <div class="search-input-wrapper">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" class="search-input" placeholder="Search burgers, tenders, shakes..." />
+          </div>
+          <div class="dietary-tags-group">
+            <button class="dietary-btn" data-filter="veg">🌱 Veg</button>
+            <button class="dietary-btn" data-filter="spicy">🌶️ Spicy</button>
+            <button class="dietary-btn" data-filter="chef">★ Chef Pick</button>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Food Cards Menu Section -->
+    <section class="menu-main-container">
+      <div class="section-header">
+        <h2 class="section-title" id="menuSectionTitle">🔥 Full Fast Food Menu</h2>
+        <span class="section-count" id="menuSectionCount">Loading items...</span>
+      </div>
+
+      <!-- Menu Grid -->
+      <div class="menu-grid" id="menuGrid">
+        <!-- Dynamic food cards generated via app.js -->
+      </div>
+    </section>
+  </main>
+
+  <!-- KITCHEN DISPLAY SYSTEM (KDS) / STAFF VIEW (Toggleable) -->
+  <main id="kdsView" style="display: none;">
+    <div class="kds-container">
+      <!-- KDS Header Bar -->
+      <div class="kds-top-bar">
+        <div class="kds-title-wrap">
+          <h2>👨‍🍳 Kitchen Display & Order Expediter (KDS)</h2>
+          <span class="kds-live-indicator">● LIVE SYNC ACTIVE</span>
+        </div>
+        <div style="display: flex; gap: 0.75rem; align-items:center;">
+          <span style="font-size:0.85rem; color:var(--text-muted);">Real-time multi-tab cross communication enabled</span>
+          <button class="btn-icon-soft" onclick="window.sizzleApp.openQRModal()">Table QR Station</button>
+        </div>
+      </div>
+
+      <!-- Active Service Call Alerts -->
+      <div id="kdsServiceAlerts" class="kds-service-alerts-box">
+        <!-- Rendered dynamically if diners call waiter or request water/bill -->
+      </div>
+
+      <!-- KDS Kanban Columns Board -->
+      <div class="kds-columns-board">
+        <!-- Column 1: Incoming Orders -->
+        <div class="kds-column">
+          <div class="kds-column-header">
+            <span>📝 NEW ORDERS</span>
+            <span class="kds-column-count" id="countReceived">0</span>
+          </div>
+          <div class="kds-tickets-container" id="kdsReceivedTickets"></div>
+        </div>
+
+        <!-- Column 2: In Prep (Cooking) -->
+        <div class="kds-column">
+          <div class="kds-column-header" style="border-bottom-color: var(--primary);">
+            <span style="color: var(--primary);">🔥 IN PREP / ON GRILL</span>
+            <span class="kds-column-count" id="countCooking">0</span>
+          </div>
+          <div class="kds-tickets-container" id="kdsCookingTickets"></div>
+        </div>
+
+        <!-- Column 3: Plated & Ready to Serve -->
+        <div class="kds-column">
+          <div class="kds-column-header" style="border-bottom-color: var(--accent-gold);">
+            <span style="color: var(--accent-gold);">🛎️ READY FOR TABLE</span>
+            <span class="kds-column-count" id="countReady">0</span>
+          </div>
+          <div class="kds-tickets-container" id="kdsReadyTickets"></div>
+        </div>
+
+        <!-- Column 4: Delivered / Completed -->
+        <div class="kds-column">
+          <div class="kds-column-header" style="border-bottom-color: var(--accent-green);">
+            <span style="color: var(--accent-green);">✓ SERVED & PAID</span>
+            <span class="kds-column-count" id="countServed">0</span>
+          </div>
+          <div class="kds-tickets-container" id="kdsServedTickets"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Mobile Floating Cart Summary Bar -->
+  <div class="mobile-cart-floater" id="mobileCartFloater">
+    <div class="floater-left">
+      <div class="floater-badge" id="floaterItemCount">0</div>
+      <div class="floater-title">Table <span class="active-table-num">4</span> Order</div>
+    </div>
+    <div class="floater-total" id="floaterTotal">$0.00 ➔</div>
+  </div>
+
+  <!-- Cart Slide-Over Drawer Overlay & Drawer -->
+  <div class="cart-drawer-overlay" id="cartDrawerOverlay"></div>
+  <aside class="cart-drawer" id="cartDrawer">
+    <div class="cart-drawer-header">
+      <div>
+        <h3 style="font-family:var(--font-heading); font-size:1.2rem; font-weight:800;">Your Table Order</h3>
+        <span class="cart-table-tag">Dine-in: Table #<span class="active-table-num">4</span></span>
+      </div>
+      <button class="modal-close-btn" id="btnCloseCart">&times;</button>
+    </div>
+
+    <div class="cart-items-list" id="cartItemsList">
+      <!-- Items dynamically injected -->
+    </div>
+
+    <div class="cart-drawer-footer">
+      <div class="cart-bill-row">
+        <span>Items Subtotal</span>
+        <span id="cartSubtotal">$0.00</span>
+      </div>
+      <div class="cart-bill-row">
+        <span>Sales Tax (8%)</span>
+        <span id="cartTax">$0.00</span>
+      </div>
+      <div class="cart-bill-row">
+        <span>Staff Tip</span>
+        <span id="cartTip">$0.00</span>
+      </div>
+
+      <!-- Tip Selector -->
+      <div>
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem;">Add Dine-in Tip for Table Server:</div>
+        <div class="tip-selection-row">
+          <button class="tip-btn" data-tip="0">No Tip</button>
+          <button class="tip-btn" data-tip="0.10">10%</button>
+          <button class="tip-btn active" data-tip="0.15">15%</button>
+          <button class="tip-btn" data-tip="0.20">20%</button>
+        </div>
+      </div>
+
+      <div class="cart-bill-row total">
+        <span>Total Due</span>
+        <span id="cartTotal">$0.00</span>
+      </div>
+
+      <button id="btnProceedCheckout" class="btn-checkout-order">
+        <span>Proceed to Place Order ➔</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- MODAL: Item Customizer -->
+  <div class="modal-overlay" id="customizerModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Customize Item</h3>
+        <button class="modal-close-btn" id="btnCloseCustomizer">&times;</button>
+      </div>
+      <div class="modal-body" id="customizerContent">
+        <!-- Injected dynamically -->
+      </div>
+      <div class="modal-footer">
+        <div>
+          <span style="font-size:0.8rem; color:var(--text-muted);">Total with extras:</span>
+          <div id="customizerTotalPrice" style="font-family:var(--font-heading); font-size:1.3rem; font-weight:800; color:var(--primary);">$0.00</div>
+        </div>
+        <button id="btnConfirmCustomizer" class="btn-add-food" style="padding:0.75rem 1.5rem; font-size:0.95rem;">
+          Add to Table Order
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Order Checkout & Payment Choice -->
+  <div class="modal-overlay" id="checkoutModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Confirm Table Dine-In Order</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="background:rgba(255,87,34,0.12); border:1px solid rgba(255,87,34,0.3); border-radius:var(--radius-md); padding:1rem; margin-bottom:1.25rem;">
+          <h4 style="font-family:var(--font-heading); font-size:1.05rem; color:#fff; margin-bottom:0.25rem;">
+            Delivering to Table #<span id="checkoutTableNum">4</span>
+          </h4>
+          <p style="font-size:0.8rem; color:var(--text-muted);">
+            Please ensure you are currently seated at this table. Our runners will bring your food here hot and fresh.
+          </p>
+        </div>
+
+        <h4 style="font-size:0.9rem; font-weight:700; margin-bottom:0.6rem;">Select Payment Option:</h4>
+        <div style="display:flex; flex-direction:column; gap:0.65rem; margin-bottom:1.25rem;">
+          <label style="background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:0.85rem; display:flex; align-items:center; gap:0.75rem; cursor:pointer;">
+            <input type="radio" name="paymentMethod" value="pay_at_table" checked />
+            <div>
+              <div style="font-weight:700; font-size:0.9rem;">💵 Pay at Table / Cash & Card Later</div>
+              <div style="font-size:0.75rem; color:var(--text-muted);">Pay the server when your food is delivered or before leaving</div>
+            </div>
+          </label>
+
+          <label style="background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:0.85rem; display:flex; align-items:center; gap:0.75rem; cursor:pointer;">
+            <input type="radio" name="paymentMethod" value="instant_card" />
+            <div>
+              <div style="font-weight:700; font-size:0.9rem;">💳 Instant Contactless Card / Apple Pay</div>
+              <div style="font-size:0.75rem; color:var(--text-muted);">Simulated digital instant checkout (no waiting for bill)</div>
+            </div>
+          </label>
+        </div>
+
+        <div style="font-size:0.85rem; color:var(--text-muted); display:flex; justify-content:space-between; padding-top:0.5rem; border-top:1px solid var(--border-subtle);">
+          <span>Grand Total:</span>
+          <strong id="checkoutTotalAmount" style="font-size:1.15rem; color:var(--primary);">$0.00</strong>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-icon-soft" onclick="window.sizzleApp.closeModal('checkoutModal')">Cancel</button>
+        <button id="btnConfirmOrder" class="btn-checkout-order" style="width:auto; padding:0.75rem 1.75rem;">
+          Send Order to Kitchen 🔥
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Live Order Tracker & Digital Table Receipt -->
+  <div class="modal-overlay" id="orderTrackerModal">
+    <div class="modal-dialog" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Live Kitchen Tracker</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body" id="orderTrackerContent">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Table Picker (Select 1-12) -->
+  <div class="modal-overlay" id="tablePickerModal">
+    <div class="modal-dialog" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Select Your Table</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
+          Choose the table number located on your table stand or coaster:
+        </p>
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:0.75rem;">
+          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(1)">Table 1</button>
+          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(2)">Table 2</button>
+          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(3)">Table 3</button>
+          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(4)">Table 4</button>
+          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(5)">Table 5</button>
+          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(6)">Table 6</button>
+          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(7)">Table 7</button>
+          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(8)">Table 8</button>
+          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(9)">Table 9</button>
+          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(10)">Table 10</button>
+          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(11)">Table 11</button>
+          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(12)">Table 12</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Table QR Code Generator -->
+  <div class="modal-overlay" id="qrGeneratorModal">
+    <div class="modal-dialog" style="max-width: 680px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Table QR Code Station</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.85rem; color:var(--text-muted);">
+          In a real restaurant, each table features a unique QR code stand. Click on any table below to test the instant scan flow:
+        </p>
+        <div class="qr-modal-grid" id="qrCodesGrid">
+          <!-- Dynamically populated tables 1 to 12 -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span style="font-size:0.75rem; color:var(--text-subtle);">Direct URL format: ?table={number}</span>
+        <button class="btn-icon-soft" onclick="window.print()">Print Table QR Stand</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Area -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <div class="footer-links">
+      <a href="javascript:void(0)" onclick="window.sizzleApp.openTablePicker()">Switch Table</a>
+      <a href="javascript:void(0)" onclick="window.sizzleApp.openQRModal()">Table QR Generator</a>
+      <a href="javascript:void(0)" onclick="window.sizzleApp.openOrderTracker()">Track Table Order</a>
+      <a href="javascript:void(0)" onclick="document.getElementById('btnToggleMode').click()">Kitchen KDS Mode</a>
+    </div>
+    <p>&copy; 2026 SizzleBite Gourmet Burgers & Chicken. Dine-In Table Ordering Platform.</p>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="api.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
