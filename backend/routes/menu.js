@@ -65,7 +65,12 @@ router.get('/', async (req, res) => {
       total: normalized.length
     });
   } catch (err) {
-    console.error('GET /api/menu error:', err);
+    // Log the real PostgreSQL error to the backend terminal (never sent to client)
+    console.error('[GET /api/menu] Query failed.');
+    console.error('  message:', err.message);
+    if (err.code)   console.error('  pg code:', err.code);
+    if (err.detail) console.error('  detail: ', err.detail);
+    if (err.hint)   console.error('  hint:   ', err.hint);
     res.status(500).json({ error: 'Failed to fetch menu items' });
   }
 });
@@ -83,7 +88,12 @@ router.get('/:id', async (req, res) => {
     if (rows.length === 0) return res.status(404).json({ error: 'Item not found' });
     res.json(normalizeItem(rows[0]));
   } catch (err) {
-    console.error('GET /api/menu/:id error:', err);
+    // Log the real PostgreSQL error to the backend terminal (never sent to client)
+    console.error('[GET /api/menu/:id] Query failed.');
+    console.error('  message:', err.message);
+    if (err.code)   console.error('  pg code:', err.code);
+    if (err.detail) console.error('  detail: ', err.detail);
+    if (err.hint)   console.error('  hint:   ', err.hint);
     res.status(500).json({ error: 'Failed to fetch item' });
   }
 });

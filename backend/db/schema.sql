@@ -67,6 +67,8 @@ CREATE TABLE IF NOT EXISTS service_requests (
   type          VARCHAR(30)   NOT NULL
                 CHECK (type IN ('water','napkins','sauces','waiter','bill')),
   text          TEXT          NOT NULL,
+  status        VARCHAR(20)   NOT NULL DEFAULT 'pending'
+                CHECK (status IN ('pending','accepted','resolved')),
   handled       BOOLEAN       DEFAULT FALSE,
   created_at    TIMESTAMPTZ   DEFAULT NOW(),
   handled_at    TIMESTAMPTZ

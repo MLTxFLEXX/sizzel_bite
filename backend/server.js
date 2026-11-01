@@ -24,6 +24,8 @@ const allowedOrigins = [
     .filter(Boolean),
   'http://127.0.0.1:5500',
   'http://localhost:5500',
+  'http://127.0.0.1:5502',   // ← Live Server on port 5502
+  'http://localhost:5502',   // ← Live Server on port 5502
   'http://127.0.0.1:3000',
   'http://localhost:3000',
   // Null origin covers file:// opened directly in browser
@@ -47,7 +49,7 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   },
-  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -59,9 +61,8 @@ app.use((req, _res, next) => {
   next();
 });
 
-// ─── Static Serving (optional) ───────────────────────────────────────────────
-// Uncomment to serve the frontend from Express directly:
-// app.use(express.static(path.join(__dirname, '..')));
+// ─── Static Serving ──────────────────────────────────────────────────────────
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 // ─── API Routes ──────────────────────────────────────────────────────────────
 app.use('/api/menu',     menuRoutes);

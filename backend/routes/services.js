@@ -24,6 +24,7 @@ function normalizeRequest(row) {
     tableNumber: row.table_number,
     type:        row.type,
     text:        row.text,
+    status:      row.status || (row.handled ? 'resolved' : 'pending'),
     handled:     row.handled,
     time:        new Date(row.created_at).getTime(),
     handledAt:   row.handled_at ? new Date(row.handled_at).getTime() : null
@@ -32,12 +33,12 @@ function normalizeRequest(row) {
 
 /**
  * GET /api/services
- * All unhandled service requests (for KDS alerts panel).
- * Query: ?handled=false|true&table=N
+ * All unhandled service requests (for KDS alerts panel), or filtered.
+ * Query: ?handled=false|true&status=pending|accepted|resolved|all&table=N
  */
 router.get('/', async (req, res) => {
   try {
-    const { handled, table } = req.query;
+    const { handled, status, table } = req.query;
 
     let rows;
     if (table) {
@@ -50,14 +51,20 @@ router.get('/', async (req, res) => {
         WHERE table_number = ${tableNum}
         ORDER BY created_at DESC
       `;
-    } else if (handled === 'true') {
+    } else if (status === 'all') {
       rows = await sql`
-        SELECT * FROM service_requests WHERE handled = TRUE ORDER BY created_at DESC LIMIT 50
+        SELECT * FROM service_requests ORDER BY created_at DESC LIMIT 50
+      `;
+    } else if (handled === 'true' || status === 'resolved') {
+      rows = await sql`
+        SELECT * FROM service_requests WHERE handled = TRUE OR status = 'resolved' ORDER BY created_at DESC LIMIT 50
       `;
     } else {
-      // Default: return unhandled requests
+      // Default: return active requests (pending & accepted, not handled)
       rows = await sql`
-        SELECT * FROM service_requests WHERE handled = FALSE ORDER BY created_at DESC
+        SELECT * FROM service_requests
+        WHERE handled = FALSE AND (status IS NULL OR status != 'resolved')
+        ORDER BY created_at DESC
       `;
     }
 
@@ -93,8 +100,8 @@ router.post('/', async (req, res) => {
 
   try {
     const rows = await sql`
-      INSERT INTO service_requests (request_code, table_number, type, text)
-      VALUES (${requestCode}, ${table}, ${type}, ${text})
+      INSERT INTO service_requests (request_code, table_number, type, text, status, handled)
+      VALUES (${requestCode}, ${table}, ${type}, ${text}, 'pending', FALSE)
       RETURNING *
     `;
     res.status(201).json(normalizeRequest(rows[0]));
@@ -105,8 +112,33 @@ router.post('/', async (req, res) => {
 });
 
 /**
+ * PATCH /api/services/:requestCode/accept
+ * Staff acknowledges and accepts the service request (on their way).
+ */
+router.patch('/:requestCode/accept', async (req, res) => {
+  const { requestCode } = req.params;
+  if (!requestCode || !/^SRV-\d{3}$/.test(requestCode)) {
+    return res.status(400).json({ error: 'Invalid request code format' });
+  }
+
+  try {
+    const updated = await sql`
+      UPDATE service_requests
+      SET status = 'accepted'
+      WHERE request_code = ${requestCode}
+      RETURNING *
+    `;
+    if (updated.length === 0) return res.status(404).json({ error: 'Request not found' });
+    res.json(normalizeRequest(updated[0]));
+  } catch (err) {
+    console.error('PATCH /api/services/:code/accept error:', err);
+    res.status(500).json({ error: 'Failed to accept service request' });
+  }
+});
+
+/**
  * PATCH /api/services/:requestCode/resolve
- * Kitchen staff marks a service request as handled.
+ * Kitchen staff marks a service request as handled/resolved.
  */
 router.patch('/:requestCode/resolve', async (req, res) => {
   const { requestCode } = req.params;
@@ -117,7 +149,7 @@ router.patch('/:requestCode/resolve', async (req, res) => {
   try {
     const updated = await sql`
       UPDATE service_requests
-      SET handled = TRUE, handled_at = NOW()
+      SET handled = TRUE, status = 'resolved', handled_at = NOW()
       WHERE request_code = ${requestCode}
       RETURNING *
     `;
