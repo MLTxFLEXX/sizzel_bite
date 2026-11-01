@@ -83,6 +83,12 @@
     });
   }
 
+  async function acceptServiceRequest(requestCode) {
+    return apiFetch('/services/' + encodeURIComponent(requestCode) + '/accept', {
+      method: 'PATCH'
+    });
+  }
+
   async function resolveServiceRequest(requestCode) {
     return apiFetch('/services/' + encodeURIComponent(requestCode) + '/resolve', {
       method: 'PATCH'
@@ -106,6 +112,7 @@
     deleteOrder,
     fetchServices,
     createServiceRequest,
+    acceptServiceRequest,
     resolveServiceRequest,
     checkHealth
   };

@@ -291,11 +291,21 @@ body {
   padding: 0 4px;
 }
 
-/* Service / Waiter Floating Bar */
+/* Service / Waiter Quick Action Bar */
 .service-quick-bar {
-  background: var(--bg-surface);
+  background: linear-gradient(180deg, var(--bg-surface) 0%, rgba(18, 23, 34, 0.97) 100%);
   border-bottom: 1px solid var(--border-subtle);
-  padding: 0.5rem 1rem;
+  padding: 0.6rem 1.25rem;
+  position: relative;
+}
+
+.service-quick-bar::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 179, 0, 0.18), transparent);
+  pointer-events: none;
 }
 
 .service-quick-content {
@@ -303,47 +313,147 @@ body {
   margin: 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  gap: 0.85rem;
   overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
   padding-bottom: 2px;
 }
 
+.service-quick-content::-webkit-scrollbar {
+  display: none;
+}
+
 .service-label {
-  font-size: 0.775rem;
-  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-subtle);
   white-space: nowrap;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  padding-right: 0.5rem;
+  border-right: 1px solid var(--border-subtle);
 }
 
 .service-buttons-group {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
+  flex-shrink: 0;
 }
 
+/* Individual service chip icons — colour-coded per action */
 .service-chip {
+  position: relative;
   background: var(--bg-surface-elevated);
   border: 1px solid var(--border-subtle);
-  color: var(--text-main);
+  color: var(--text-muted);
   border-radius: var(--radius-full);
-  padding: 0.3rem 0.75rem;
+  padding: 0.38rem 0.85rem 0.38rem 0.7rem;
   font-size: 0.775rem;
   font-weight: 600;
+  font-family: var(--font-body);
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
   white-space: nowrap;
   transition: var(--transition);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.35);
+  letter-spacing: 0.01em;
+  overflow: hidden;
 }
 
-.service-chip:hover {
-  border-color: var(--accent-gold);
+.service-chip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.06) 0%, transparent 70%);
+}
+
+.service-chip:hover::after {
+  opacity: 1;
+}
+
+/* Water chip */
+.service-chip[data-service="water"]:hover {
+  border-color: rgba(59, 130, 246, 0.7);
+  background: rgba(59, 130, 246, 0.1);
+  color: #93c5fd;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.18);
+}
+
+/* Napkins chip */
+.service-chip[data-service="napkins"]:hover {
+  border-color: rgba(148, 163, 184, 0.55);
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--text-main);
+  box-shadow: 0 0 10px rgba(148, 163, 184, 0.1);
+}
+
+/* Sauces chip */
+.service-chip[data-service="sauces"]:hover {
+  border-color: rgba(255, 87, 34, 0.6);
+  background: rgba(255, 87, 34, 0.1);
+  color: var(--primary-hover);
+  box-shadow: 0 0 10px rgba(255, 87, 34, 0.18);
+}
+
+/* Waiter chip */
+.service-chip[data-service="waiter"]:hover {
+  border-color: rgba(255, 179, 0, 0.7);
   background: rgba(255, 179, 0, 0.1);
   color: var(--accent-gold);
+  box-shadow: 0 0 10px rgba(255, 179, 0, 0.18);
+}
+
+/* Bill chip — most prominent */
+.service-chip[data-service="bill"] {
+  border-color: rgba(255, 87, 34, 0.3);
+  color: rgba(255, 140, 80, 0.85);
+}
+
+.service-chip[data-service="bill"]:hover {
+  border-color: var(--primary);
+  background: rgba(255, 87, 34, 0.14);
+  color: #fff;
+  box-shadow: 0 0 14px rgba(255, 87, 34, 0.25);
+}
+
+/* Active / pressed state for all chips */
+.service-chip:active {
+  transform: scale(0.96);
+  opacity: 0.85;
+}
+
+/* Sending animation state (added by JS) */
+.service-chip.sending {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+@media (max-width: 600px) {
+  .service-quick-bar {
+    padding: 0.55rem 0.85rem;
+  }
+  .service-label {
+    display: none;
+  }
+  .service-quick-content {
+    gap: 0.4rem;
+  }
+  .service-chip {
+    font-size: 0.72rem;
+    padding: 0.35rem 0.65rem 0.35rem 0.55rem;
+    gap: 0.3rem;
+  }
 }
 
 /* Hero Dine-In Banner */
@@ -1209,6 +1319,27 @@ body {
   padding: 0.85rem;
   display: flex;
   gap: 0.85rem;
+  align-items: center;
+}
+
+.cart-item-thumb {
+  width: 58px;
+  height: 58px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-elevated);
+}
+
+.order-item-thumb {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-elevated);
 }
 
 .cart-item-info {
@@ -1714,21 +1845,187 @@ body {
   gap: 0.75rem;
 }
 
+/* ── Service Request Card ─────────────────────────────────────────────── */
 .service-call-card {
-  background: rgba(255, 179, 0, 0.15);
-  border: 1px solid rgba(255, 179, 0, 0.35);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 0.75rem 1rem;
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-width: 280px;
+  flex: 1 1 280px;
+  transition: var(--transition);
+}
+
+.service-call-card.srv-card-pending {
+  border-color: rgba(255, 179, 0, 0.45);
+  background: rgba(255, 179, 0, 0.07);
+  box-shadow: 0 0 14px rgba(255, 179, 0, 0.1);
+}
+
+.service-call-card.srv-card-accepted {
+  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.07);
+}
+
+.srv-card-left {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
 }
 
-.service-call-card strong {
+.srv-type-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.srv-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.srv-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.srv-card-title strong {
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.srv-card-type {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.srv-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Status pills */
+.srv-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-full);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.srv-pending {
+  background: rgba(255, 179, 0, 0.18);
   color: var(--accent-gold);
-  font-size: 0.85rem;
+  border: 1px solid rgba(255, 179, 0, 0.35);
+  animation: pulse-dot 2s infinite;
 }
 
+.srv-accepted {
+  background: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+.srv-resolved {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-green);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.service-call-card.srv-card-resolved {
+  opacity: 0.75;
+  border-color: rgba(16, 185, 129, 0.25);
+  background: rgba(16, 185, 129, 0.04);
+}
+
+.srv-history-toggle {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.srv-history-toggle:hover {
+  color: #fff;
+  border-color: var(--text-muted);
+}
+
+.srv-time {
+  font-size: 0.72rem;
+  color: var(--text-subtle);
+}
+
+/* Action buttons on service cards */
+.srv-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.srv-btn {
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.srv-btn-accept {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #93c5fd;
+}
+
+.srv-btn-accept:hover {
+  background: rgba(59, 130, 246, 0.3);
+  border-color: #3b82f6;
+  color: #fff;
+}
+
+.srv-btn-resolve {
+  background: rgba(16, 185, 129, 0.13);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: var(--accent-green);
+}
+
+.srv-btn-resolve:hover {
+  background: var(--accent-green);
+  border-color: var(--accent-green);
+  color: #fff;
+}
+
+/* Keep old .btn-dismiss-alert for backward compat */
 .btn-dismiss-alert {
   background: rgba(255, 255, 255, 0.1);
   border: none;

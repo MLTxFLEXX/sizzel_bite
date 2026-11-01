@@ -3,7 +3,7 @@ const MENU_DATA = {
   restaurant: {
     name: "SizzleBite Gourmet Burgers & Chicken",
     tagline: "Fresh Off The Grill • Sizzling To Your Table",
-    currency: "$",
+    currency: "₹",
     taxRate: 0.08, // 8% sales tax
     totalTables: 12,
     serviceCallTypes: [
@@ -28,7 +28,7 @@ const MENU_DATA = {
       id: "b1",
       name: "The Double Sizzle Smash",
       category: "burgers",
-      price: 11.99,
+      price: 299.00,
       calories: 820,
       prepTime: "6-8 mins",
       isPopular: true,
@@ -44,19 +44,19 @@ const MENU_DATA = {
           required: true,
           options: [
             { name: "Double Angus Beef (Included)", price: 0 },
-            { name: "Triple Angus Beef", price: 3.50 },
-            { name: "Beyond Meat Plant-Based", price: 1.50 }
+            { name: "Triple Angus Beef", price: 80 },
+            { name: "Beyond Meat Plant-Based", price: 50 }
           ]
         },
         addons: {
           title: "Add Extra Toppings",
           type: "checkbox",
           options: [
-            { name: "Crispy Smoked Bacon", price: 1.95 },
-            { name: "Extra Melted Cheddar", price: 1.25 },
-            { name: "Grilled Jalapeños", price: 0.95 },
-            { name: "Fried Farm Egg", price: 1.50 },
-            { name: "Truffle Aioli Dip", price: 1.20 }
+            { name: "Crispy Smoked Bacon", price: 60 },
+            { name: "Extra Melted Cheddar", price: 40 },
+            { name: "Grilled Jalapeños", price: 30 },
+            { name: "Fried Farm Egg", price: 50 },
+            { name: "Truffle Aioli Dip", price: 35 }
           ]
         }
       }
@@ -65,7 +65,7 @@ const MENU_DATA = {
       id: "b2",
       name: "Fiery Nashville Crispy Bird",
       category: "chicken",
-      price: 10.49,
+      price: 259.00,
       calories: 740,
       prepTime: "7-9 mins",
       isPopular: true,
@@ -89,9 +89,9 @@ const MENU_DATA = {
           title: "Tasty Add-ons",
           type: "checkbox",
           options: [
-            { name: "Extra Slaw", price: 0.95 },
-            { name: "Pepper Jack Cheese", price: 1.25 },
-            { name: "Hot Honey Drizzle", price: 1.20 }
+            { name: "Extra Slaw", price: 30 },
+            { name: "Pepper Jack Cheese", price: 40 },
+            { name: "Hot Honey Drizzle", price: 35 }
           ]
         }
       }
@@ -100,7 +100,7 @@ const MENU_DATA = {
       id: "b3",
       name: "Truffle & Mushroom Melt",
       category: "burgers",
-      price: 12.99,
+      price: 319.00,
       calories: 790,
       prepTime: "8-10 mins",
       isPopular: false,
@@ -116,7 +116,7 @@ const MENU_DATA = {
           required: true,
           options: [
             { name: "Classic Prime Beef", price: 0 },
-            { name: "Double Patty", price: 3.50 },
+            { name: "Double Patty", price: 80 },
             { name: "Portobello Mushroom Patty (Veg)", price: 0 }
           ]
         },
@@ -124,9 +124,9 @@ const MENU_DATA = {
           title: "Extras",
           type: "checkbox",
           options: [
-            { name: "Extra Swiss Cheese", price: 1.50 },
-            { name: "Caramelized Balsamic Onions", price: 1.20 },
-            { name: "Crispy Bacon", price: 1.95 }
+            { name: "Extra Swiss Cheese", price: 50 },
+            { name: "Caramelized Balsamic Onions", price: 35 },
+            { name: "Crispy Bacon", price: 60 }
           ]
         }
       }
@@ -135,7 +135,7 @@ const MENU_DATA = {
       id: "b4",
       name: "Smoky BBQ Bacon Cheeseburger",
       category: "burgers",
-      price: 11.49,
+      price: 289.00,
       calories: 890,
       prepTime: "6-8 mins",
       isPopular: true,
@@ -151,16 +151,16 @@ const MENU_DATA = {
           required: true,
           options: [
             { name: "Quarter Pound Beef", price: 0 },
-            { name: "Half Pound Double Beef", price: 3.20 }
+            { name: "Half Pound Double Beef", price: 80 }
           ]
         },
         addons: {
           title: "Extra Boost",
           type: "checkbox",
           options: [
-            { name: "Double Bacon", price: 1.95 },
-            { name: "Jalapeño Popper on Top", price: 1.80 },
-            { name: "Chipotle Mayo", price: 0.95 }
+            { name: "Double Bacon", price: 60 },
+            { name: "Jalapeño Popper on Top", price: 50 },
+            { name: "Chipotle Mayo", price: 30 }
           ]
         }
       }
@@ -169,7 +169,7 @@ const MENU_DATA = {
       id: "b5",
       name: "Garden Harvest Green Burger",
       category: "burgers",
-      price: 10.25,
+      price: 229.00,
       calories: 560,
       prepTime: "6-7 mins",
       isPopular: false,
@@ -185,7 +185,7 @@ const MENU_DATA = {
           required: true,
           options: [
             { name: "Toasted Multigrain Bun", price: 0 },
-            { name: "Gluten-Free Artisan Bun", price: 1.50 },
+            { name: "Gluten-Free Artisan Bun", price: 50 },
             { name: "Crisp Lettuce Wrap", price: 0 }
           ]
         },
@@ -193,9 +193,9 @@ const MENU_DATA = {
           title: "Add-ons",
           type: "checkbox",
           options: [
-            { name: "Vegan Cheddar Slice", price: 1.25 },
-            { name: "Extra Smashed Avocado", price: 1.80 },
-            { name: "Pickled Red Onions", price: 0.75 }
+            { name: "Vegan Cheddar Slice", price: 40 },
+            { name: "Extra Smashed Avocado", price: 50 },
+            { name: "Pickled Red Onions", price: 25 }
           ]
         }
       }
@@ -204,7 +204,7 @@ const MENU_DATA = {
       id: "c1",
       name: "Crispy Golden Chicken Tenders (5pcs)",
       category: "chicken",
-      price: 8.99,
+      price: 219.00,
       calories: 620,
       prepTime: "5-7 mins",
       isPopular: true,
@@ -229,8 +229,8 @@ const MENU_DATA = {
           title: "Extra Dips",
           type: "checkbox",
           options: [
-            { name: "Extra Sizzle Sauce Cup", price: 0.90 },
-            { name: "Buttermilk Ranch Cup", price: 0.90 }
+            { name: "Extra Sizzle Sauce Cup", price: 25 },
+            { name: "Buttermilk Ranch Cup", price: 25 }
           ]
         }
       }
@@ -239,14 +239,14 @@ const MENU_DATA = {
       id: "c2",
       name: "Korean Sweet & Spicy Wings",
       category: "chicken",
-      price: 11.25,
+      price: 269.00,
       calories: 780,
       prepTime: "8-10 mins",
       isPopular: true,
       isChefSpecial: true,
       isSpicy: true,
       isVeg: false,
-      image: "https://images.unsplash.com/photo-1527477378377-f8e5b61b7fcf?auto=format&fit=crop&w=800&q=80",
+      image: "https://images.unsplash.com/photo-1567620832903-9fc6debc209f?auto=format&fit=crop&w=800&q=80",
       description: "Double-fried Jumbo wings coated in sticky Gochujang chili glaze, toasted sesame seeds, and scallions.",
       customizations: {
         wingCount: {
@@ -255,7 +255,7 @@ const MENU_DATA = {
           required: true,
           options: [
             { name: "6 Wings", price: 0 },
-            { name: "10 Wings (Hungry Size)", price: 4.50 }
+            { name: "10 Wings (Hungry Size)", price: 120 }
           ]
         }
       }
@@ -264,7 +264,7 @@ const MENU_DATA = {
       id: "s1",
       name: "Sizzle Loaded Monster Fries",
       category: "sides",
-      price: 6.99,
+      price: 189.00,
       calories: 680,
       prepTime: "4-6 mins",
       isPopular: true,
@@ -278,9 +278,9 @@ const MENU_DATA = {
           title: "Custom Upgrades",
           type: "checkbox",
           options: [
-            { name: "Add Chopped Beef Patty", price: 2.20 },
-            { name: "Extra Melted Cheese Sauce", price: 1.50 },
-            { name: "Sour Cream & Chives", price: 1.00 }
+            { name: "Add Chopped Beef Patty", price: 60 },
+            { name: "Extra Melted Cheese Sauce", price: 50 },
+            { name: "Sour Cream & Chives", price: 30 }
           ]
         }
       }
@@ -289,14 +289,14 @@ const MENU_DATA = {
       id: "s2",
       name: "Beer-Battered Crispy Onion Rings",
       category: "sides",
-      price: 5.49,
+      price: 149.00,
       calories: 420,
       prepTime: "4-5 mins",
       isPopular: false,
       isChefSpecial: false,
       isSpicy: false,
       isVeg: true,
-      image: "https://images.unsplash.com/photo-1639024471285-0afc3835697c?auto=format&fit=crop&w=800&q=80",
+      image: "https://images.unsplash.com/photo-1623653387945-2fd25214f8fc?auto=format&fit=crop&w=800&q=80",
       description: "Thick sweet Spanish onion rings dipped in craft IPA batter and fried crisp. Served with smoky chipotle aioli dip.",
       customizations: {}
     },
@@ -304,14 +304,14 @@ const MENU_DATA = {
       id: "s3",
       name: "Truffle Parmesan Herb Fries",
       category: "sides",
-      price: 6.49,
+      price: 169.00,
       calories: 490,
       prepTime: "4-5 mins",
       isPopular: false,
       isChefSpecial: true,
       isSpicy: false,
       isVeg: true,
-      image: "https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&w=800&q=80",
+      image: "https://images.unsplash.com/photo-1630384060421-cb20d0e0649d?auto=format&fit=crop&w=800&q=80",
       description: "Shoestring fries tossed with white truffle oil, grated aged parmesan reggiano, and chopped Italian parsley.",
       customizations: {}
     },
@@ -319,7 +319,7 @@ const MENU_DATA = {
       id: "s4",
       name: "Crispy Mozzarella Sticks (6pcs)",
       category: "sides",
-      price: 6.25,
+      price: 179.00,
       calories: 520,
       prepTime: "4-5 mins",
       isPopular: true,
@@ -334,7 +334,7 @@ const MENU_DATA = {
       id: "d1",
       name: "Salted Caramel Pretzel Shake",
       category: "drinks",
-      price: 6.25,
+      price: 169.00,
       calories: 590,
       prepTime: "3-4 mins",
       isPopular: true,
@@ -350,7 +350,7 @@ const MENU_DATA = {
           required: true,
           options: [
             { name: "Whole Dairy Milk", price: 0 },
-            { name: "Oat Milk Alternative", price: 1.00 }
+            { name: "Oat Milk Alternative", price: 30 }
           ]
         }
       }
@@ -359,7 +359,7 @@ const MENU_DATA = {
       id: "d2",
       name: "Double Dark Chocolate Fudge Shake",
       category: "drinks",
-      price: 5.99,
+      price: 159.00,
       calories: 610,
       prepTime: "3-4 mins",
       isPopular: false,
@@ -374,7 +374,7 @@ const MENU_DATA = {
       id: "d3",
       name: "Artisan Craft Soda Fountain",
       category: "drinks",
-      price: 3.25,
+      price: 89.00,
       calories: 140,
       prepTime: "1 min",
       isPopular: false,
@@ -402,7 +402,7 @@ const MENU_DATA = {
       id: "cb1",
       name: "The Sizzle Boss Feast Combo",
       category: "combos",
-      price: 16.99,
+      price: 449.00,
       calories: 1350,
       prepTime: "8-10 mins",
       isPopular: true,
@@ -418,16 +418,16 @@ const MENU_DATA = {
           required: true,
           options: [
             { name: "Fountain Soda (Refillable)", price: 0 },
-            { name: "Upgrade to Salted Caramel Shake", price: 3.00 },
-            { name: "Upgrade to Chocolate Fudge Shake", price: 3.00 }
+            { name: "Upgrade to Salted Caramel Shake", price: 70 },
+            { name: "Upgrade to Chocolate Fudge Shake", price: 70 }
           ]
         },
         burgerChoice: {
           title: "Burger Cheese Upgrades",
           type: "checkbox",
           options: [
-            { name: "Add Extra Smoked Bacon", price: 1.95 },
-            { name: "Make Burger Triple Patty", price: 3.50 }
+            { name: "Add Extra Smoked Bacon", price: 60 },
+            { name: "Make Burger Triple Patty", price: 80 }
           ]
         }
       }
@@ -436,14 +436,14 @@ const MENU_DATA = {
       id: "cb2",
       name: "Crispy Duo Chicken Feast",
       category: "combos",
-      price: 15.49,
+      price: 399.00,
       calories: 1220,
       prepTime: "8-10 mins",
       isPopular: true,
       isChefSpecial: false,
       isSpicy: true,
       isVeg: false,
-      image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80",
+      image: "https://images.unsplash.com/photo-1606755962773-d324e0a13086?auto=format&fit=crop&w=800&q=80",
       description: "Nashville Hot Chicken Sandwich + 3 Crispy Golden Tenders + Seasoned Fries + Fountain Drink.",
       customizations: {
         dip: {
@@ -453,7 +453,7 @@ const MENU_DATA = {
           options: [
             { name: "House Sizzle Sauce", price: 0 },
             { name: "Creamy Garlic Mayo", price: 0 },
-            { name: "Hot Honey Drizzle", price: 0.50 }
+            { name: "Hot Honey Drizzle", price: 20 }
           ]
         }
       }
@@ -462,7 +462,7 @@ const MENU_DATA = {
       id: "ds1",
       name: "Warm Nutella Churro Bites",
       category: "desserts",
-      price: 5.99,
+      price: 159.00,
       calories: 450,
       prepTime: "4-5 mins",
       isPopular: true,
@@ -477,7 +477,7 @@ const MENU_DATA = {
       id: "ds2",
       name: "Sizzling Hot Brownie & Vanilla Bean Ice Cream",
       category: "desserts",
-      price: 6.49,
+      price: 179.00,
       calories: 580,
       prepTime: "4-5 mins",
       isPopular: false,
@@ -504,7 +504,7 @@ const INITIAL_DEMO_DATA = {
         {
           id: "b1",
           name: "The Double Sizzle Smash",
-          price: 13.94,
+          price: 359.00,
           quantity: 2,
           customizationsText: "Double Angus Beef, Crispy Smoked Bacon",
           instructions: "Well done patties please"
@@ -512,7 +512,7 @@ const INITIAL_DEMO_DATA = {
         {
           id: "s1",
           name: "Sizzle Loaded Monster Fries",
-          price: 6.99,
+          price: 189.00,
           quantity: 1,
           customizationsText: "Standard Loaded",
           instructions: "Jalapeños on the side"
@@ -520,16 +520,16 @@ const INITIAL_DEMO_DATA = {
         {
           id: "d1",
           name: "Salted Caramel Pretzel Shake",
-          price: 6.25,
+          price: 169.00,
           quantity: 2,
           customizationsText: "Whole Dairy Milk",
           instructions: ""
         }
       ],
-      subtotal: 41.12,
-      tax: 3.29,
-      tip: 4.00,
-      total: 48.41,
+      subtotal: 1245.00,
+      tax: 99.60,
+      tip: 100.00,
+      total: 1444.60,
       estimatedTime: 5
     },
     {
@@ -542,16 +542,16 @@ const INITIAL_DEMO_DATA = {
         {
           id: "cb1",
           name: "The Sizzle Boss Feast Combo",
-          price: 19.99,
+          price: 519.00,
           quantity: 1,
           customizationsText: "Upgrade to Salted Caramel Shake",
           instructions: "Extra crispy fries"
         }
       ],
-      subtotal: 19.99,
-      tax: 1.60,
-      tip: 2.00,
-      total: 23.59,
+      subtotal: 519.00,
+      tax: 41.52,
+      tip: 50.00,
+      total: 610.52,
       estimatedTime: 8
     }
   ],

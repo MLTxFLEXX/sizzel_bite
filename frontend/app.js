@@ -80,6 +80,19 @@
 
   const sfx = new SoundEffects();
 
+  // --- CURRENCY FORMATTER (INR) ---
+  const inrFormatter = new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 2
+  });
+
+  function formatPrice(amount) {
+    return inrFormatter.format(amount || 0);
+  }
+
+  let activeTrackedOrderId = null;
+
   // --- STATE MANAGEMENT ---
   const state = {
     activeTable: 4, // Default table if none in URL
@@ -92,7 +105,9 @@
     customizingItem: null,
     activeOrders: [],
     serviceRequests: [],
-    broadcast: null
+    showResolvedServices: false,
+    broadcast: null,
+    isSubmittingOrder: false
   };
 
   // --- INITIALIZATION ---
@@ -108,10 +123,93 @@
     checkActiveTableOrder();
     renderServiceAlertsInKDS();
 
-    // Periodic timer tick for KDS elapsed minutes & order tracking
+    // Hydrate menu dynamically from backend API if available
+    if (window.SizzleAPI && typeof window.SizzleAPI.fetchMenu === 'function') {
+      window.SizzleAPI.fetchMenu().then(data => {
+        if (data && Array.isArray(data.items) && data.items.length > 0) {
+          MENU_DATA.items = data.items;
+          if (Array.isArray(data.categories) && data.categories.length > 0) {
+            MENU_DATA.categories = data.categories;
+          }
+          renderCategories();
+          renderMenuGrid();
+        }
+      }).catch(() => {
+        // Fallback gracefully to data.js without interrupting the user
+      });
+    }
+
+    // Hydrate real orders dynamically from backend PostgreSQL database
+    if (window.SizzleAPI && typeof window.SizzleAPI.fetchOrders === 'function') {
+      window.SizzleAPI.fetchOrders().then(data => {
+        if (data && Array.isArray(data.orders)) {
+          if (data.orders.length > 0) {
+            state.activeOrders = data.orders;
+            saveOrders();
+            renderKDS();
+            checkActiveTableOrder();
+          }
+        }
+      }).catch(err => {
+        console.warn("Backend orders sync error:", err);
+      });
+    }
+
+    // Hydrate service requests from backend on load (persists across refresh)
+    if (window.SizzleAPI && typeof window.SizzleAPI.fetchServices === 'function') {
+      window.SizzleAPI.fetchServices({ status: 'all' }).then(data => {
+        if (data && Array.isArray(data.requests) && data.requests.length > 0) {
+          const localById = {};
+          state.serviceRequests.forEach(r => { localById[r.id] = r; });
+          state.serviceRequests = data.requests.map(r => ({
+            ...r,
+            status: r.status || (localById[r.id] && localById[r.id].status) || (r.handled ? 'resolved' : 'pending')
+          }));
+          saveServices();
+          renderServiceAlertsInKDS();
+        }
+      }).catch(err => {
+        console.warn("Backend services sync error:", err);
+      });
+    }
+
+    // Periodic timer tick for KDS elapsed minutes & live order tracking
+    let pollCount = 0;
     setInterval(() => {
       updateKDSTicketTimes();
       updateCustomerOrderTimer();
+      pollCount++;
+      // Auto-refresh active order in tracker every 5 seconds if modal is open
+      if (pollCount % 5 === 0) {
+        const trackerModal = document.getElementById('orderTrackerModal');
+        if (trackerModal && trackerModal.classList.contains('active') && activeTrackedOrderId && window.SizzleAPI) {
+          window.SizzleAPI.fetchOrder(activeTrackedOrderId).then(live => {
+            if (live && live.id) {
+              const idx = state.activeOrders.findIndex(o => o.id === live.id);
+              if (idx > -1) state.activeOrders[idx] = live;
+              else state.activeOrders.unshift(live);
+              saveOrders();
+              checkActiveTableOrder();
+              renderTrackerContent(live);
+            }
+          }).catch(() => {});
+        }
+      }
+      // Re-poll service requests from DB every 8 seconds for real-time KDS updates
+      if (pollCount % 8 === 0 && window.SizzleAPI && typeof window.SizzleAPI.fetchServices === 'function') {
+        window.SizzleAPI.fetchServices({ status: 'all' }).then(data => {
+          if (data && Array.isArray(data.requests)) {
+            const localById = {};
+            state.serviceRequests.forEach(r => { localById[r.id] = r; });
+            state.serviceRequests = data.requests.map(r => ({
+              ...r,
+              status: r.status || (localById[r.id] && localById[r.id].status) || (r.handled ? 'resolved' : 'pending')
+            }));
+            saveServices();
+            renderServiceAlertsInKDS();
+          }
+        }).catch(() => {});
+      }
     }, 1000);
   }
 
@@ -140,6 +238,11 @@
       const savedOrders = localStorage.getItem('sizzle_orders');
       if (savedOrders) {
         state.activeOrders = JSON.parse(savedOrders);
+        // Refresh stale demo orders if saved in old USD (subtotal < 100)
+        if (state.activeOrders.some(o => o.subtotal < 100) && window.INITIAL_DEMO_DATA) {
+          state.activeOrders = window.INITIAL_DEMO_DATA.activeOrders;
+          saveOrders();
+        }
       } else if (window.INITIAL_DEMO_DATA) {
         state.activeOrders = window.INITIAL_DEMO_DATA.activeOrders;
         saveOrders();
@@ -155,7 +258,14 @@
 
       const savedCart = localStorage.getItem(`sizzle_cart_tbl_${state.activeTable}`);
       if (savedCart) {
-        state.cart = JSON.parse(savedCart);
+        const parsedCart = JSON.parse(savedCart);
+        // Clear stale USD cart items (< 100)
+        if (parsedCart.some(i => i.totalPrice < 100)) {
+          state.cart = [];
+          saveCart();
+        } else {
+          state.cart = parsedCart;
+        }
       }
     } catch (e) {
       console.warn("Storage access error:", e);
@@ -258,6 +368,15 @@
     });
   }
 
+  // Image resolver with fallback
+  function getMenuItemImage(idOrName) {
+    if (!idOrName) return 'images/placeholder-food.svg';
+    const found = (window.MENU_DATA && window.MENU_DATA.items)
+      ? window.MENU_DATA.items.find(i => i.id === idOrName || i.name === idOrName)
+      : null;
+    return (found && found.image) ? found.image : 'images/placeholder-food.svg';
+  }
+
   function renderMenuGrid() {
     const grid = document.getElementById('menuGrid');
     const titleEl = document.getElementById('menuSectionTitle');
@@ -312,7 +431,7 @@
       return `
         <article class="food-card" data-item-id="${item.id}">
           <div class="food-image-wrapper">
-            <img src="${item.image}" alt="${item.name}" class="food-img" loading="lazy" />
+            <img src="${item.image}" alt="${item.name}" class="food-img" loading="lazy" onerror="this.onerror=null; this.src='images/placeholder-food.svg';" />
             <div class="card-badges">
               ${item.isChefSpecial ? '<span class="badge badge-chef">Chef Special</span>' : ''}
               ${item.isPopular ? '<span class="badge badge-popular">★ Bestseller</span>' : ''}
@@ -324,7 +443,7 @@
           <div class="food-card-body">
             <div class="food-card-header">
               <h3 class="food-title">${item.name}</h3>
-              <span class="food-price">$${item.price.toFixed(2)}</span>
+              <span class="food-price">${formatPrice(item.price)}</span>
             </div>
             <p class="food-description">${item.description}</p>
             <div class="food-meta-row">
@@ -378,6 +497,7 @@
       basePrice: item.price,
       totalPrice: item.price,
       quantity: 1,
+      image: item.image,
       customizationsText: "Standard Chef Prep",
       instructions: ""
     });
@@ -419,7 +539,7 @@
                     />
                     <span>${opt.name}</span>
                   </div>
-                  ${opt.price > 0 ? `<span class="custom-option-price">+$${opt.price.toFixed(2)}</span>` : '<span class="custom-option-price" style="color:var(--text-subtle);">Free</span>'}
+                  ${opt.price > 0 ? `<span class="custom-option-price">+${formatPrice(opt.price)}</span>` : '<span class="custom-option-price" style="color:var(--text-subtle);">Free</span>'}
                 </label>
               `).join('')}
             </div>
@@ -436,12 +556,12 @@
 
     container.innerHTML = `
       <div class="customizer-item-preview">
-        <img src="${item.image}" alt="${item.name}" class="customizer-img" />
+        <img src="${item.image}" alt="${item.name}" class="customizer-img" onerror="this.onerror=null; this.src='images/placeholder-food.svg';" />
         <div class="customizer-details">
           <h3>${item.name}</h3>
           <p>${item.description}</p>
           <div style="margin-top: 0.5rem; font-weight: 800; color: var(--primary);">
-            Base Price: $${item.price.toFixed(2)}
+            Base Price: ${formatPrice(item.price)}
           </div>
         </div>
       </div>
@@ -486,7 +606,7 @@
     });
 
     if (totalDisplay) {
-      totalDisplay.textContent = `$${total.toFixed(2)}`;
+      totalDisplay.textContent = formatPrice(total);
     }
   }
 
@@ -503,7 +623,7 @@
       const p = parseFloat(input.dataset.price || 0);
       extraPrice += p;
       if (p > 0) {
-        selectedMods.push(`${input.value} (+$${p.toFixed(2)})`);
+        selectedMods.push(`${input.value} (+${formatPrice(p)})`);
       } else {
         selectedMods.push(input.value);
       }
@@ -515,6 +635,7 @@
       basePrice: item.price,
       totalPrice: item.price + extraPrice,
       quantity: 1,
+      image: item.image,
       customizationsText: selectedMods.join(', ') || 'Standard',
       instructions: notes
     });
@@ -586,7 +707,7 @@
       if (totalItems > 0) {
         floater.classList.add('visible');
         document.getElementById('floaterItemCount').textContent = totalItems;
-        document.getElementById('floaterTotal').textContent = `$${total.toFixed(2)}`;
+        document.getElementById('floaterTotal').textContent = `${formatPrice(total)} ➔`;
       } else {
         floater.classList.remove('visible');
       }
@@ -609,11 +730,12 @@
     } else {
       cartList.innerHTML = state.cart.map(item => `
         <div class="cart-item-card">
+          <img src="${item.image || getMenuItemImage(item.menuItemId || item.name)}" alt="${item.name}" class="cart-item-thumb" onerror="this.onerror=null; this.src='images/placeholder-food.svg';" />
           <div class="cart-item-info">
             <h4 class="cart-item-title">${item.name}</h4>
             <div class="cart-item-modifiers">${item.customizationsText}</div>
             ${item.instructions ? `<div class="cart-item-notes">Note: "${item.instructions}"</div>` : ''}
-            <div class="cart-item-price">$${(item.totalPrice * item.quantity).toFixed(2)}</div>
+            <div class="cart-item-price">${formatPrice(item.totalPrice * item.quantity)}</div>
           </div>
           <div class="cart-item-actions">
             <div class="qty-pill">
@@ -634,10 +756,10 @@
     const totalEl = document.getElementById('cartTotal');
     const checkoutBtn = document.getElementById('btnProceedCheckout');
 
-    if (subtotalEl) subtotalEl.textContent = `$${subtotal.toFixed(2)}`;
-    if (taxEl) taxEl.textContent = `$${tax.toFixed(2)}`;
-    if (tipEl) tipEl.textContent = `$${tip.toFixed(2)}`;
-    if (totalEl) totalEl.textContent = `$${total.toFixed(2)}`;
+    if (subtotalEl) subtotalEl.textContent = formatPrice(subtotal);
+    if (taxEl) taxEl.textContent = formatPrice(tax);
+    if (tipEl) tipEl.textContent = formatPrice(tip);
+    if (totalEl) totalEl.textContent = formatPrice(total);
 
     if (checkoutBtn) {
       checkoutBtn.disabled = totalItems === 0;
@@ -657,62 +779,119 @@
     const total = subtotal + tax + tip;
 
     document.getElementById('checkoutTableNum').textContent = state.activeTable;
-    document.getElementById('checkoutTotalAmount').textContent = `$${total.toFixed(2)}`;
+    document.getElementById('checkoutTotalAmount').textContent = formatPrice(total);
 
     closeCartDrawer();
     modal.classList.add('active');
   }
 
-  function submitOrder() {
+  async function submitOrder() {
+    if (state.cart.length === 0) return;
+    if (state.isSubmittingOrder) return;
+
+    const btnConfirm = document.getElementById('btnConfirmOrder');
+    const originalBtnText = btnConfirm ? btnConfirm.innerHTML : 'Send Order to Kitchen 🔥';
+
+    state.isSubmittingOrder = true;
+    if (btnConfirm) {
+      btnConfirm.disabled = true;
+      btnConfirm.innerHTML = '<span>Sending to Kitchen... 🔥</span>';
+    }
+
     const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked')?.value || 'pay_at_table';
     const subtotal = state.cart.reduce((sum, i) => sum + (i.totalPrice * i.quantity), 0);
     const tax = subtotal * MENU_DATA.restaurant.taxRate;
     const tip = subtotal * state.selectedTipPercent;
     const total = subtotal + tax + tip;
 
-    const newOrder = {
-      id: "ORD-" + Math.floor(1000 + Math.random() * 9000),
+    const payload = {
       tableNumber: state.activeTable,
-      createdAt: Date.now(),
-      status: "received", // 'received', 'cooking', 'ready', 'served'
-      paymentMethod: paymentMethod,
       items: state.cart.map(i => ({
-        id: i.menuItemId,
+        menuItemId: i.menuItemId,
         name: i.name,
-        price: i.totalPrice,
+        basePrice: i.basePrice,
+        totalPrice: i.totalPrice,
         quantity: i.quantity,
         customizationsText: i.customizationsText,
         instructions: i.instructions
       })),
-      subtotal: subtotal,
-      tax: tax,
-      tip: tip,
-      total: total,
-      estimatedTime: 8
+      paymentMethod: paymentMethod,
+      tip: tip
     };
 
-    state.activeOrders.unshift(newOrder);
+    let confirmedOrder = null;
+
+    try {
+      if (window.SizzleAPI && typeof window.SizzleAPI.createOrder === 'function') {
+        confirmedOrder = await window.SizzleAPI.createOrder(payload);
+      } else {
+        // SizzleAPI not available — cannot place order
+        showToast('⚠️ Cannot reach the kitchen server. Please try again.');
+      }
+    } catch (err) {
+      console.error("Backend order creation error:", err);
+      showToast(`⚠️ Order failed: ${err.message || 'Could not reach server. Please try again.'}`);
+    }
+
+    // Abort if backend did not return a valid saved order — never generate a fake ID
+    if (!confirmedOrder || !confirmedOrder.id) {
+      if (btnConfirm) {
+        btnConfirm.disabled = false;
+        btnConfirm.innerHTML = originalBtnText;
+      }
+      state.isSubmittingOrder = false;
+      return;
+    }
+
+    // Authoritative ID: exact order ID returned by the backend response
+    activeTrackedOrderId = confirmedOrder.id;
+    localStorage.setItem('sizzle_active_order_id', confirmedOrder.id);
+
+    // Update in-memory orders
+    const existingIdx = state.activeOrders.findIndex(o => o.id === confirmedOrder.id);
+    if (existingIdx > -1) {
+      state.activeOrders[existingIdx] = confirmedOrder;
+    } else {
+      state.activeOrders.unshift(confirmedOrder);
+    }
+
     saveOrders();
     clearCart();
 
     // Broadcast to KDS / other tabs
     broadcast({
       type: 'NEW_ORDER',
-      order: newOrder
+      order: confirmedOrder
     });
 
     sfx.playOrderBell();
     closeModal('checkoutModal');
-    showToast(`Order #${newOrder.id} successfully sent to the kitchen!`);
+    showToast(`Order #${confirmedOrder.id} successfully sent to the kitchen!`);
 
-    // Open Live Order Tracker
-    openOrderTracker(newOrder.id);
+    if (btnConfirm) {
+      btnConfirm.disabled = false;
+      btnConfirm.innerHTML = originalBtnText;
+    }
+    state.isSubmittingOrder = false;
+
+    // Check active order banner & update KDS
+    checkActiveTableOrder();
     renderKDS();
+
+    // Open Live Order Tracker with the exact backend order ID
+    openOrderTracker(confirmedOrder.id);
   }
 
   // --- LIVE ORDER TRACKER ---
   function checkActiveTableOrder() {
-    const currentOrder = state.activeOrders.find(o => o.tableNumber === state.activeTable && o.status !== 'served');
+    let currentOrder = state.activeOrders.find(o => o.tableNumber === state.activeTable && o.status !== 'served');
+    if (!currentOrder) {
+      const activeStoredId = localStorage.getItem('sizzle_active_order_id');
+      if (activeStoredId) {
+        currentOrder = state.activeOrders.find(o => o.id === activeStoredId && o.status !== 'served');
+      }
+    }
+
     const banner = document.getElementById('activeOrderBanner');
     if (banner) {
       if (currentOrder) {
@@ -735,25 +914,110 @@
     }
   }
 
-  function openOrderTracker(orderId) {
-    let order = null;
-    if (orderId) {
-      order = state.activeOrders.find(o => o.id === orderId);
-    } else {
-      order = state.activeOrders.find(o => o.tableNumber === state.activeTable);
-    }
-
-    if (!order) {
-      showToast("No recent active orders found for this table.");
-      return;
-    }
-
+  async function openOrderTracker(orderId) {
     const modal = document.getElementById('orderTrackerModal');
     const content = document.getElementById('orderTrackerContent');
     if (!modal || !content) return;
 
-    renderTrackerContent(order);
+    // Resolve target order ID
+    let targetId = orderId;
+    if (!targetId) {
+      const activeForTable = state.activeOrders.find(o => o.tableNumber === state.activeTable && o.status !== 'served');
+      if (activeForTable) {
+        targetId = activeForTable.id;
+      }
+    }
+    if (!targetId) {
+      targetId = localStorage.getItem('sizzle_active_order_id');
+    }
+
+    if (!targetId) {
+      showToast("No active orders found for this table.");
+      return;
+    }
+
+    activeTrackedOrderId = targetId;
     modal.classList.add('active');
+
+    // Display clean loading indicator
+    content.innerHTML = `
+      <div style="text-align:center; padding:3rem 1.5rem;">
+        <div style="font-size:2.5rem; margin-bottom:0.75rem;">⏳</div>
+        <h4 style="font-size:1.1rem; font-weight:700; color:var(--text-bright); margin-bottom:0.4rem;">
+          Connecting to Kitchen Live Database...
+        </h4>
+        <p style="font-size:0.85rem; color:var(--text-muted);">
+          Retrieving live status for Order <strong style="color:var(--primary);">${targetId}</strong>
+        </p>
+      </div>
+    `;
+
+    // Fetch the real order from PostgreSQL via GET /api/orders/:orderCode
+    try {
+      if (window.SizzleAPI && typeof window.SizzleAPI.fetchOrder === 'function') {
+        const liveOrder = await window.SizzleAPI.fetchOrder(targetId);
+        if (liveOrder && liveOrder.id) {
+          // Sync with state.activeOrders
+          const idx = state.activeOrders.findIndex(o => o.id === liveOrder.id);
+          if (idx > -1) {
+            state.activeOrders[idx] = liveOrder;
+          } else {
+            state.activeOrders.unshift(liveOrder);
+          }
+          saveOrders();
+          checkActiveTableOrder();
+          renderTrackerContent(liveOrder);
+          return;
+        } else {
+          throw new Error(`Order ${targetId} could not be retrieved`);
+        }
+      } else {
+        // Fallback to local state if SizzleAPI wrapper not found
+        const localOrder = state.activeOrders.find(o => o.id === targetId);
+        if (localOrder) {
+          renderTrackerContent(localOrder);
+        } else {
+          renderTrackerError(targetId, "Order not found in database.");
+        }
+      }
+    } catch (err) {
+      console.error(`Live Kitchen Tracker error for ${targetId}:`, err);
+      // Check if local cache has an offline copy
+      const localCopy = state.activeOrders.find(o => o.id === targetId);
+      if (localCopy) {
+        renderTrackerContent(localCopy, `Showing local copy (${err.message})`);
+      } else {
+        renderTrackerError(targetId, err.message || "Order not found in PostgreSQL database");
+      }
+    }
+  }
+
+  function renderTrackerError(orderId, errorMsg) {
+    const content = document.getElementById('orderTrackerContent');
+    if (!content) return;
+
+    content.innerHTML = `
+      <div style="text-align:center; padding: 2.5rem 1.5rem; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); border-radius: var(--radius-lg); margin-bottom: 1rem;">
+        <div style="font-size: 3rem; margin-bottom: 0.75rem;">⚠️</div>
+        <h4 style="font-size: 1.15rem; font-weight: 800; color: #ef4444; margin-bottom: 0.5rem;">
+          Order Not Found
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-muted); max-width: 420px; margin: 0 auto 1.25rem;">
+          Could not retrieve <strong>${orderId || 'requested order'}</strong> from the kitchen database.
+        </p>
+        <div style="font-family: monospace; font-size: 0.8rem; background: var(--bg-dark); padding: 0.6rem 1rem; border-radius: var(--radius-sm); color: #fca5a5; display: inline-block; margin-bottom: 1.5rem; border: 1px solid rgba(255,255,255,0.08);">
+          ${errorMsg}
+        </div>
+        <div style="display:flex; justify-content:center; gap:0.75rem;">
+          <button class="btn-icon-soft" onclick="window.sizzleApp.openOrderTracker('${orderId}')">
+            🔄 Retry
+          </button>
+          <button class="btn-cart-header" onclick="window.sizzleApp.closeModal('orderTrackerModal')">
+            Close
+          </button>
+        </div>
+      </div>
+    `;
   }
 
   function renderTrackerContent(order) {
@@ -812,21 +1076,24 @@
       <div style="background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:1rem; margin-bottom:1rem;">
         <h4 style="font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; display:flex; justify-content:space-between;">
           <span>Itemized Table Receipt</span>
-          <span style="color:var(--primary);">$${order.total.toFixed(2)}</span>
+          <span style="color:var(--primary);">${formatPrice(order.total)}</span>
         </h4>
-        <div style="font-size:0.825rem; display:flex; flex-direction:column; gap:0.5rem;">
+        <div style="font-size: 0.825rem; display:flex; flex-direction:column; gap:0.65rem;">
           ${order.items.map(it => `
-            <div style="display:flex; justify-content:space-between;">
-              <div>
-                <strong>${it.quantity}x</strong> ${it.name}
-                <div style="font-size:0.75rem; color:var(--text-muted);">${it.customizationsText}</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem;">
+              <div style="display:flex; align-items:center; gap:0.65rem;">
+                <img src="${it.image || getMenuItemImage(it.id || it.name)}" alt="${it.name}" class="order-item-thumb" onerror="this.onerror=null; this.src='images/placeholder-food.svg';" />
+                <div>
+                  <strong>${it.quantity}x</strong> ${it.name}
+                  <div style="font-size:0.75rem; color:var(--text-muted);">${it.customizationsText}</div>
+                </div>
               </div>
-              <div>$${(it.price * it.quantity).toFixed(2)}</div>
+              <div style="font-weight:700; color:var(--text-bright);">${formatPrice(it.price * it.quantity)}</div>
             </div>
           `).join('')}
         </div>
         <div style="border-top:1px dashed var(--border-subtle); margin-top:0.75rem; padding-top:0.5rem; font-size:0.775rem; color:var(--text-muted); display:flex; justify-content:space-between;">
-          <span>Subtotal: $${order.subtotal.toFixed(2)} | Tax: $${order.tax.toFixed(2)} | Tip: $${order.tip.toFixed(2)}</span>
+          <span>Subtotal: ${formatPrice(order.subtotal)} | Tax: ${formatPrice(order.tax)} | Tip: ${formatPrice(order.tip)}</span>
         </div>
       </div>
 
@@ -949,6 +1216,13 @@
     saveOrders();
     renderKDS();
 
+    // Sync status with PostgreSQL backend
+    if (window.SizzleAPI && typeof window.SizzleAPI.updateOrderStatus === 'function') {
+      window.SizzleAPI.updateOrderStatus(order.id, newStatus).catch(err => {
+        console.warn("Backend order status update error:", err);
+      });
+    }
+
     broadcast({
       type: 'STATUS_UPDATE',
       orderId: order.id,
@@ -978,6 +1252,14 @@
     saveOrders();
     renderKDS();
     checkActiveTableOrder();
+
+    // Sync cancellation with PostgreSQL backend
+    if (window.SizzleAPI && typeof window.SizzleAPI.deleteOrder === 'function') {
+      window.SizzleAPI.deleteOrder(orderId).catch(err => {
+        console.warn("Backend order delete error:", err);
+      });
+    }
+
     showToast(`Ticket ${orderId} cancelled.`);
   }
 
@@ -1000,27 +1282,78 @@
     const srv = MENU_DATA.restaurant.serviceCallTypes.find(s => s.id === typeId);
     const label = srv ? srv.label : "Call Server";
 
-    const request = {
-      id: "SRV-" + Math.floor(100 + Math.random() * 900),
+    // Optimistic local state (shown immediately in KDS with Pending status while API call is in-flight)
+    const tempId = "SRV-" + Math.floor(100 + Math.random() * 900);
+    const localRequest = {
+      id: tempId,
       tableNumber: state.activeTable,
       type: typeId,
       text: label,
+      status: 'pending',
       time: Date.now(),
       handled: false
     };
 
-    state.serviceRequests.unshift(request);
+    state.serviceRequests.unshift(localRequest);
     saveServices();
-
-    broadcast({
-      type: 'SERVICE_REQUEST',
-      tableNumber: state.activeTable,
-      text: label
-    });
-
-    sfx.playOrderBell();
-    showToast(`🛎️ Staff alerted: "${label}" sent for Table #${state.activeTable}!`);
     renderServiceAlertsInKDS();
+
+    // ── Send to backend (Neon PostgreSQL via /api/services) ──────────────────
+    if (window.SizzleAPI && typeof window.SizzleAPI.createServiceRequest === 'function') {
+      window.SizzleAPI.createServiceRequest(state.activeTable, typeId)
+        .then(saved => {
+          // Replace temp local entry with real DB record
+          const idx = state.serviceRequests.findIndex(s => s.id === tempId);
+          const finalItem = {
+            id:          saved.id,
+            dbId:        saved.dbId,
+            tableNumber: saved.tableNumber,
+            type:        saved.type,
+            text:        saved.text || label,
+            status:      saved.status || 'pending',
+            time:        saved.time || Date.now(),
+            handled:     saved.handled || false
+          };
+          if (idx !== -1) {
+            state.serviceRequests[idx] = finalItem;
+          } else {
+            state.serviceRequests.unshift(finalItem);
+          }
+          saveServices();
+          renderServiceAlertsInKDS();
+
+          sfx.playOrderBell();
+          showToast(`✅ Request Confirmed: Table #${saved.tableNumber} — ${saved.text || label} is now Pending Staff attention.`);
+
+          broadcast({
+            type: 'SERVICE_REQUEST',
+            id: saved.id,
+            tableNumber: saved.tableNumber,
+            text: saved.text || label,
+            status: 'pending'
+          });
+        })
+        .catch(err => {
+          console.error('Service request API error:', err);
+          // Remove optimistic entry on failure so UI accurately reflects DB state
+          state.serviceRequests = state.serviceRequests.filter(s => s.id !== tempId);
+          saveServices();
+          renderServiceAlertsInKDS();
+          showToast(`⚠️ Could not save request "${label}" for Table #${state.activeTable}: ${err.message || 'network error'}. Please try again.`);
+        });
+    } else {
+      // Backend unavailable fallback
+      sfx.playOrderBell();
+      showToast(`✅ Request Sent: Table #${state.activeTable} — ${label} is Pending.`);
+      broadcast({
+        type: 'SERVICE_REQUEST',
+        id: tempId,
+        tableNumber: state.activeTable,
+        text: label,
+        status: 'pending'
+      });
+    }
+
     closeModal('serviceModal');
   }
 
@@ -1028,35 +1361,186 @@
     const container = document.getElementById('kdsServiceAlerts');
     if (!container) return;
 
-    const unhandled = state.serviceRequests.filter(s => !s.handled);
-    if (unhandled.length === 0) {
+    // Separate into active (pending, accepted) and resolved
+    const active = state.serviceRequests.filter(s => !s.handled && s.status !== 'resolved');
+    const resolved = state.serviceRequests.filter(s => s.handled || s.status === 'resolved');
+
+    if (active.length === 0 && resolved.length === 0) {
       container.innerHTML = '';
       return;
     }
 
-    container.innerHTML = unhandled.map(s => `
-      <div class="service-call-card">
-        <div>
-          <strong>Table #${s.tableNumber}:</strong>
-          <span>${s.text}</span>
-          <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.5rem;">
-            (${Math.floor((Date.now() - s.time) / 60000)}m ago)
+    const TYPE_ICONS = {
+      water:   '💧', napkins: '🧻', sauces: '🥫', waiter: '👨‍💼', bill: '🧾'
+    };
+
+    let html = '';
+
+    if (active.length > 0) {
+      html += active.map(s => {
+        const icon        = TYPE_ICONS[s.type] || '🛎️';
+        const minsAgo     = Math.floor((Date.now() - (s.time || Date.now())) / 60000);
+        const timeLabel   = minsAgo < 1 ? 'just now' : `${minsAgo}m ago`;
+        const isAccepted  = s.status === 'accepted';
+        const statusPill  = isAccepted
+          ? `<span class="srv-status-pill srv-accepted">✓ Accepted</span>`
+          : `<span class="srv-status-pill srv-pending">● Pending</span>`;
+
+        const acceptBtn = !isAccepted
+          ? `<button class="srv-btn srv-btn-accept"
+                onclick="window.sizzleApp.acceptService('${s.id}')"
+                title="Acknowledge request — staff on the way">
+               👍 Accept
+             </button>`
+          : '';
+
+        return `
+          <div class="service-call-card ${isAccepted ? 'srv-card-accepted' : 'srv-card-pending'}"
+               data-srv-id="${s.id}">
+            <div class="srv-card-left">
+              <span class="srv-type-icon">${icon}</span>
+              <div class="srv-card-body">
+                <div class="srv-card-title">
+                  <strong>Table #${s.tableNumber}</strong>
+                  <span class="srv-card-type">${s.text}</span>
+                </div>
+                <div class="srv-card-meta">
+                  ${statusPill}
+                  <span class="srv-time">${timeLabel}</span>
+                </div>
+              </div>
+            </div>
+            <div class="srv-card-actions">
+              ${acceptBtn}
+              <button class="srv-btn srv-btn-resolve"
+                  onclick="window.sizzleApp.dismissService('${s.id}')"
+                  title="Mark as resolved">
+                ✓ Mark as Resolved
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    if (resolved.length > 0) {
+      const toggleLabel = state.showResolvedServices
+        ? '▲ Hide Resolved History'
+        : `▼ View Resolved History (${resolved.length})`;
+
+      html += `
+        <div style="width: 100%; display: flex; align-items: center; justify-content: space-between; margin-top: 0.5rem;">
+          <span style="font-size: 0.75rem; color: var(--text-muted);">
+            Active Calls: <strong>${active.length}</strong> | Resolved Today: <strong>${resolved.length}</strong>
           </span>
+          <button class="srv-history-toggle" onclick="window.sizzleApp.toggleResolvedServices()">
+            ${toggleLabel}
+          </button>
         </div>
-        <button class="btn-dismiss-alert" onclick="window.sizzleApp.dismissService('${s.id}')">
-          ✓ Resolved
-        </button>
-      </div>
-    `).join('');
+      `;
+
+      if (state.showResolvedServices) {
+        html += resolved.slice(0, 10).map(s => {
+          const icon      = TYPE_ICONS[s.type] || '🛎️';
+          const minsAgo   = Math.floor((Date.now() - (s.time || Date.now())) / 60000);
+          const timeLabel = minsAgo < 1 ? 'just now' : `${minsAgo}m ago`;
+
+          return `
+            <div class="service-call-card srv-card-resolved" data-srv-id="${s.id}">
+              <div class="srv-card-left">
+                <span class="srv-type-icon">${icon}</span>
+                <div class="srv-card-body">
+                  <div class="srv-card-title">
+                    <strong>Table #${s.tableNumber}</strong>
+                    <span class="srv-card-type">${s.text}</span>
+                  </div>
+                  <div class="srv-card-meta">
+                    <span class="srv-status-pill srv-resolved">✓ Resolved</span>
+                    <span class="srv-time">${timeLabel}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    container.innerHTML = html;
+  }
+
+  function acceptService(srvId) {
+    const srv = state.serviceRequests.find(s => s.id === srvId);
+    if (!srv || srv.status === 'accepted') return;
+    srv.status = 'accepted';
+    srv.handled = false;
+    saveServices();
+    renderServiceAlertsInKDS();
+
+    // Persist status change to database
+    if (window.SizzleAPI && typeof window.SizzleAPI.acceptServiceRequest === 'function') {
+      window.SizzleAPI.acceptServiceRequest(srvId)
+        .then(updated => {
+          if (updated && updated.status) {
+            srv.status = updated.status;
+            saveServices();
+            renderServiceAlertsInKDS();
+          }
+        })
+        .catch(err => {
+          console.warn('Backend accept service error:', err);
+        });
+    }
+
+    broadcast({
+      type: 'SERVICE_STATUS_CHANGE',
+      id: srvId,
+      status: 'accepted',
+      tableNumber: srv.tableNumber
+    });
+
+    showToast(`👍 Accepted: Table #${srv.tableNumber} ${srv.text} — staff on the way!`);
   }
 
   function dismissService(srvId) {
     const srv = state.serviceRequests.find(s => s.id === srvId);
     if (srv) {
       srv.handled = true;
+      srv.status = 'resolved';
+      srv.handledAt = Date.now();
       saveServices();
       renderServiceAlertsInKDS();
+
+      // Persist resolved status to backend (request_code matches SRV-xxx format)
+      if (window.SizzleAPI && typeof window.SizzleAPI.resolveServiceRequest === 'function') {
+        window.SizzleAPI.resolveServiceRequest(srvId)
+          .then(updated => {
+            if (updated) {
+              srv.handled = updated.handled !== undefined ? updated.handled : true;
+              srv.status = updated.status || 'resolved';
+              saveServices();
+              renderServiceAlertsInKDS();
+            }
+          })
+          .catch(err => {
+            console.warn('Backend resolve service error:', err);
+          });
+      }
+
+      broadcast({
+        type: 'SERVICE_STATUS_CHANGE',
+        id: srvId,
+        status: 'resolved',
+        tableNumber: srv.tableNumber
+      });
+
+      showToast(`✓ Resolved: Table #${srv.tableNumber} ${srv.text} marked as resolved.`);
     }
+  }
+
+  function toggleResolvedServices() {
+    state.showResolvedServices = !state.showResolvedServices;
+    renderServiceAlertsInKDS();
   }
 
   // --- TABLE SWITCHING & QR CODE MODAL ---
@@ -1205,12 +1689,16 @@
 
     // Active order banner click
     document.getElementById('activeOrderBanner')?.addEventListener('click', () => {
-      openOrderTracker();
+      const bannerId = document.getElementById('bannerOrderId')?.textContent?.trim();
+      openOrderTracker(bannerId || undefined);
     });
 
     // Quick Service Chips
     document.querySelectorAll('.service-chip').forEach(chip => {
       chip.addEventListener('click', () => {
+        // Brief visual feedback: dim while sending, then restore
+        chip.classList.add('sending');
+        setTimeout(() => chip.classList.remove('sending'), 1200);
         sendServiceRequest(chip.dataset.service);
       });
     });
@@ -1279,6 +1767,8 @@
     advanceOrderStatus: advanceOrderStatus,
     cancelOrder: cancelOrder,
     dismissService: dismissService,
+    acceptService: acceptService,
+    toggleResolvedServices: toggleResolvedServices,
     changeTable: changeTable,
     openTablePicker: () => document.getElementById('tablePickerModal')?.classList.add('active'),
     openQRModal: openTableQRModal,
