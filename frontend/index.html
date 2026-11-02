@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0e14" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>SizzleBite — Fast Food Dine-In Table Ordering</title>
   <meta name="description" content="Order fresh smash burgers, crispy chicken, loaded fries, and craft shakes directly from your restaurant table. Zero waiting, fast live kitchen tracking." />
   <link rel="stylesheet" href="styles.css" />
@@ -67,9 +71,9 @@
   </aside>
 
   <!-- Sticky Live Order Tracker Banner (Shows if Table has active order) -->
-  <div id="activeOrderBanner" style="display:none; background: linear-gradient(90deg, #ff5722 0%, #ff8f00 100%); color:#fff; padding:0.65rem 1.25rem; cursor:pointer; align-items:center; justify-content:center; gap:0.75rem; font-size:0.85rem; font-weight:700; box-shadow:0 4px 12px rgba(255,87,34,0.3);">
+  <div id="activeOrderBanner" class="active-order-banner" style="display:none;">
     <span>⚡ <span id="bannerOrderStatus">Order in progress</span> for Table <span class="active-table-num">4</span> (<span id="bannerOrderId">ORD-9421</span>)</span>
-    <span style="background:rgba(0,0,0,0.25); padding:0.2rem 0.6rem; border-radius:999px; font-size:0.75rem;">View Live Kitchen Tracker ➔</span>
+    <span class="active-order-banner-btn">View Live Kitchen Tracker ➔</span>
   </div>
 
   <!-- MAIN CUSTOMER VIEW -->
@@ -323,9 +327,9 @@
           <strong id="checkoutTotalAmount" style="font-size:1.15rem; color:var(--primary);">₹0.00</strong>
         </div>
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer checkout-modal-footer">
         <button class="btn-icon-soft" onclick="window.sizzleApp.closeModal('checkoutModal')">Cancel</button>
-        <button id="btnConfirmOrder" class="btn-checkout-order" style="width:auto; padding:0.75rem 1.75rem;">
+        <button id="btnConfirmOrder" class="btn-checkout-order btn-confirm-checkout">
           Send Order to Kitchen 🔥
         </button>
       </div>
@@ -356,19 +360,19 @@
         <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
           Choose the table number located on your table stand or coaster:
         </p>
-        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:0.75rem;">
-          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(1)">Table 1</button>
-          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(2)">Table 2</button>
-          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(3)">Table 3</button>
-          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(4)">Table 4</button>
-          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(5)">Table 5</button>
-          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(6)">Table 6</button>
-          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(7)">Table 7</button>
-          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(8)">Table 8</button>
-          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(9)">Table 9</button>
-          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(10)">Table 10</button>
-          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(11)">Table 11</button>
-          <button class="btn-icon-soft" style="justify-content:center; padding:1rem;" onclick="window.sizzleApp.changeTable(12)">Table 12</button>
+        <div class="table-grid-selection">
+          <button class="btn-icon-soft table-select-btn" onclick="window.sizzleApp.changeTable(1)">Table 1</button>
+          <button class="btn-icon-soft table-select-btn" onclick="window.sizzleApp.changeTable(2)">Table 2</button>
+          <button class="btn-icon-soft table-select-btn" onclick="window.sizzleApp.changeTable(3)">Table 3</button>
+          <button class="btn-icon-soft table-select-btn" onclick="window.sizzleApp.changeTable(4)">Table 4</button>
+          <button class="btn-icon-soft table-select-btn" onclick="window.sizzleApp.changeTable(5)">Table 5</button>
+          <button class="btn-icon-soft table-select-btn" onclick="window.sizzleApp.changeTable(6)">Table 6</button>
+          <button class="btn-icon-soft table-select-btn" onclick="window.sizzleApp.changeTable(7)">Table 7</button>
+          <button class="btn-icon-soft table-select-btn" onclick="window.sizzleApp.changeTable(8)">Table 8</button>
+          <button class="btn-icon-soft table-select-btn" onclick="window.sizzleApp.changeTable(9)">Table 9</button>
+          <button class="btn-icon-soft table-select-btn" onclick="window.sizzleApp.changeTable(10)">Table 10</button>
+          <button class="btn-icon-soft table-select-btn" onclick="window.sizzleApp.changeTable(11)">Table 11</button>
+          <button class="btn-icon-soft table-select-btn" onclick="window.sizzleApp.changeTable(12)">Table 12</button>
         </div>
       </div>
     </div>
