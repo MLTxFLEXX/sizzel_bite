@@ -28,13 +28,18 @@ const allowedOrigins = [
   'http://localhost:5502',   // ← Live Server on port 5502
   'http://127.0.0.1:3000',
   'http://localhost:3000',
+  'https://sizzel-bite.onrender.com',
+  'http://sizzel-bite.onrender.com',
   // Null origin covers file:// opened directly in browser
   'null'
 ];
 
-// Deployed frontends are hosted on *.vercel.app (covers the production
-// domain and every preview deployment subdomain).
-const allowedOriginPatterns = [ /^https?:\/\/[a-z0-9-]+\.vercel\.app$/i ];
+// Deployed frontends: Vercel (*.vercel.app), Render (*.onrender.com), Netlify (*.netlify.app)
+const allowedOriginPatterns = [
+  /^https?:\/\/[a-z0-9-]+\.vercel\.app$/i,
+  /^https?:\/\/[a-z0-9-]+\.onrender\.com$/i,
+  /^https?:\/\/[a-z0-9-]+\.netlify\.app$/i
+];
 
 app.use(cors({
   origin: (origin, callback) => {
